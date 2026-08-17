@@ -1,0 +1,12 @@
+{
+  "name": "cc-skills",
+  "description": "Personal Claude Code skills collection.",
+  "owner": { "name": "luzz" },
+  "plugins": [
+    {
+      "name": "to-obs",
+      "source": "./",
+      "skills": ["./skills/to-obs"]
+    }
+  ]
+}
