@@ -1,0 +1,11 @@
+{
+  "name": "interfaces",
+  "version": "0.1.0",
+  "description": "Interface design quality skills: UI polish, typography, colors, layout, accessibility, writing, reviews, stress tests and variants (from jakubkrehel/skills, MIT).",
+  "skills": [
+    "./skills"
+  ],
+  "author": {
+    "name": "luzz"
+  }
+}

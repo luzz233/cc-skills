@@ -4,39 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 仓库定位
 
-个人 Claude Code plugin marketplace，集中管理自用的 skill、hook、subagent。这里没有 build/test/lint——仓库本身就是交付物，通过 Claude Code 的 plugin 机制消费。
+个人 plugin marketplace，集中管理自用的 skill、hook、subagent。这里没有 build/test/lint——仓库本身就是交付物，通过 plugin 机制消费（Claude Code 与 ZCode 双端兼容）。
 
-## 架构：共享根切片
+## 架构：每插件独立根
 
-仓库根即 marketplace 根。每个功能是 `.claude-plugin/marketplace.json` 里 `plugins` 数组的一条独立 plugin 条目（`source: "./"`），用组件字段从共享目录切片。路径一律相对仓库根、以 `./` 开头；列出的路径就是该条目的完整组件集合，共享目录里未列出的不加载。
+每个插件一个独立目录，自带清单与组件，目录即插件根：
 
-目录职责：
-
-- `skills/<name>/SKILL.md` — skill 本体，一个子目录一个 skill
-- `agents/<name>.md` — subagent，一个文件一个 agent
-- `hooks/<name>.json` — hooks 配置，一个文件一组 hooks
-- `scripts/` — hook 脚本等可执行文件
-
-条目写法（组件字段按需组合；`skills`/`agents`/`commands` 是数组，`hooks` 是路径字符串或内联对象）：
-
-```json
-{
-  "name": "<plugin-name>",
-  "source": "./",
-  "skills": ["./skills/<skill-name>"],
-  "agents": ["./agents/<agent-name>.md"],
-  "hooks": "./hooks/<name>.json"
-}
 ```
+interfaces/               ← 插件根
+├── .claude-plugin/plugin.json   ← 清单：name/version/skills 等组件声明
+└── skills/<name>/SKILL.md       ← skill 本体，一个子目录一个 skill
+to-obs/
+├── .claude-plugin/plugin.json
+└── skills/to-obs/SKILL.md
+```
+
+- `.claude-plugin/marketplace.json` 里每条 entry 只写 `{"name", "source": "./<插件目录>"}`；组件一律由插件根的 plugin.json 声明，不要在 marketplace entry 上写组件字段
+- 清单路径 `.zcode-plugin/plugin.json` 与 `.claude-plugin/plugin.json` ZCode 都认，本仓库统一用后者（Claude Code 原生格式）
+- plugin.json 的 `skills` 字段 = 字符串或字符串数组，相对插件根；指向的目录下 `skills/<name>/SKILL.md` 会被扫描（本仓库约定 `skills` 目录内一层子目录一个 skill）
+- **为什么放弃共享根切片**（旧的 `source: "./"` + entry 上写 `skills` 数组）：ZCode 加载插件时要求插件根必须有 plugin.json，组件字段写在 marketplace entry 上它不读；且多个 entry 共享同一根会导致清单归属混乱。独立根是两端的标准形态
+- SKILL.md frontmatter 必含 `name`、`description`；多余键（如上游的 `disable-model-invocation: true`）ZCode 会降级为「不可自动触发」，不会导致加载失败，保留不动
 
 ## 新增组件的流程
 
-**skill**：建 `skills/<name>/SKILL.md`（frontmatter 必含 `name`、`description`）→ 条目加 `"skills"` → validate。
+**新插件**：建 `<name>/.claude-plugin/plugin.json` + `<name>/skills/...` → marketplace.json 加一条 `{"name", "source"}` → validate。
 
-**subagent**：建 `agents/<name>.md`（frontmatter 必含 `name`、`description`；可选 `model`、`tools`、`effort`、`maxTurns` 等，`model` 默认 `inherit`）→ 条目加 `"agents"` → validate。
-限制：plugin 分发的 agent 不支持 `hooks`、`mcpServers`、`permissionMode` 字段（写了被忽略）；需要这些能力的 agent 放 `~/.claude/agents/`，不进本仓库。
+**往现有插件加 skill**：在 `<插件根>/skills/<skill-name>/` 建 SKILL.md → validate。无需改任何 json（`skills` 指向整个目录）。
 
-**hook**：脚本放 `scripts/`，建 `hooks/<name>.json` → 条目加 `"hooks"` → validate。hooks.json 结构（事件名、matcher 与用户级 hooks 同一套）：
+**hook**：脚本放 `<插件根>/scripts/`，hooks.json 结构（事件名、matcher 与用户级 hooks 同一套）：
 
 ```json
 {
@@ -53,17 +48,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 }
 ```
 
-任何改动后跑 `claude plugin validate .`；已安装端用 `/plugin marketplace update` 刷新。
+任何改动后跑 `claude plugin validate .`；安装端用 `/plugin marketplace update` 刷新。
 
 ## 常用命令
 
-- `claude plugin validate .` — 校验 manifest、条目、frontmatter、hooks.json；改过仓库必跑
-- 消费（Claude Code 会话内）：`/plugin marketplace add <本地路径或 owner/repo>`，再 `/plugin install <name>@cc-skills`
+- `claude plugin validate .` — 校验 marketplace.json、条目、plugin.json、frontmatter；改过仓库必跑
+- 消费（Claude Code 会话内）：`/plugin marketplace add luzz233/cc-skills`（或本地路径），再 `/plugin install <name>@cc-skills`
 
 ## 约定与红线
 
-- `skills/`、`agents/`、`hooks/`、`scripts/` 等组件目录必须在仓库根，绝不能放进 `.claude-plugin/`（里面只放 json）
-- marketplace 名字不能用 Anthropic 保留名（`claude-plugins-official`、`claude-community` 等）
-- 本仓库约定：条目的 `name` 与其主组件的目录/文件名保持一致，便于对应
-- malformed `hooks/*.json` 会导致整个 plugin 加载失败——改 hooks 后必须 validate
+- plugin.json 的 `name` 必须与 marketplace entry 的 `name` 一致，且与所在目录名一致
+- `backup/CLAUDE.global.md` 是全局 `~/.claude/CLAUDE.md` 的 tracked 备份副本（防误改、防工具覆写）；以 home 那份为准，改了全局就同步更新这份
+- malformed hooks.json 会导致整个 plugin 加载失败——改 hooks 后必须 validate
 - hook 引用插件文件一律用 `${CLAUDE_PLUGIN_ROOT}`（解析到缓存副本，每次更新都变，所以要加双引号防路径带空格）；需要跨更新存活的状态放 `${CLAUDE_PLUGIN_DATA}`

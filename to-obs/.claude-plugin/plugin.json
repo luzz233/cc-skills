@@ -1,0 +1,11 @@
+{
+  "name": "to-obs",
+  "version": "0.1.0",
+  "description": "Capture Obsidian vault extension pitfalls and remediate existing notes.",
+  "skills": [
+    "./skills"
+  ],
+  "author": {
+    "name": "luzz"
+  }
+}

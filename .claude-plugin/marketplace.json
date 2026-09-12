@@ -5,25 +5,11 @@
   "plugins": [
     {
       "name": "to-obs",
-      "source": "./",
-      "skills": ["./skills/to-obs"]
+      "source": "./to-obs"
     },
     {
       "name": "interfaces",
-      "source": "./",
-      "skills": [
-        "./skills/better-accessibility",
-        "./skills/better-colors",
-        "./skills/better-interface",
-        "./skills/better-layout",
-        "./skills/better-typography",
-        "./skills/better-ui",
-        "./skills/better-writing",
-        "./skills/break",
-        "./skills/explain-interface",
-        "./skills/interface-review",
-        "./skills/variant"
-      ]
+      "source": "./interfaces"
     }
   ]
 }
